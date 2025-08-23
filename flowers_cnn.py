@@ -1,18 +1,22 @@
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress TensorFlow warnings
+
 import tensorflow as tf
 import random
 import numpy as np
+import platform
 from tensorflow.keras import layers, models
 
 
 # classes = ['daisy', 'dandelion', 'roses', 'sunflowers', 'tulips']
-
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress TensorFlow warnings
 class FlowersCNN:
     def __init__(self):
         pass
 
     def prepare_data(self, raw_data_dir):
+        
+
+        
         # 1 First turn the folder contents into a list of files:
         data = os.listdir(raw_data_dir)
         for data_folder in data:
@@ -98,7 +102,7 @@ class FlowersCNN:
             layers.Dropout(0.2),  # Dropout layer to reduce overfitting
             layers.Flatten(),
             # layers.Dense(512, activation='relu'),
-            layers.Dense(len(classes), activation='softmax')  # Output layer for multi-class classification
+            layers.Dense(len(self.classes), activation='softmax')  # Output layer for multi-class classification
         ])
         model.compile(optimizer='adam',
                       loss='sparse_categorical_crossentropy',
@@ -118,7 +122,7 @@ class FlowersCNN:
             print(f"Model saved as '{model_name}.keras'.")
         return history
     
-    def predict(self, model, image_path):
+    def flowers_predict(self, model, image_path):
         # Preprocess the image to match the input shape of the model
         loaded_model = tf.keras.models.load_model(model)
         image = tf.keras.preprocessing.image.load_img(image_path, target_size=(180, 180)) # a Pillow image object — basically a Python-friendly wrapper around the raw pixel data.
@@ -137,24 +141,40 @@ class FlowersCNN:
         confidence = np.max(predictions)  # Get the confidence of the prediction
 
         return predicted_class_name, confidence # The data type of the returned object is a tuple containing the predicted class name and the confidence score.
-        
+
+
+if platform.system() == 'Windows':
+    raw_data_dir = r'C:\python_work\tensorFlow\wsl_venv\Udacity\flowers\flower_photos'
+else:
+    raw_data_dir = '/mnt/c/python_work/tensorFlow/wsl_venv/Udacity/flowers/flower_photos'
+
 flowers_cnn = FlowersCNN()
-flowers_prepare_data = flowers_cnn.prepare_data('flower_photos')
-flowers_preprocessed_train_ds = flowers_cnn.preprocess_images('flower_photos/train', shuffle=True) # This will return a tf.data.Dataset object that contains the preprocessed images and their labels.
+flowers_prepare_data = flowers_cnn.prepare_data(raw_data_dir=raw_data_dir)  # This will create the train and validation folders in the flower_photos directory.
+flowers_preprocessed_train_ds = flowers_cnn.preprocess_images(os.path.join(raw_data_dir, 'train'), shuffle=True) # This will return a tf.data.Dataset object that contains the preprocessed images and their labels.
 
 # Reminder: you can use the .take(1) method to get a batch of images and labels from the dataset.
 # for image_batch, labels_batch in flowers_preprocessed_train_ds.take(1):
 #     print(image_batch[0].shape, labels_batch)  # Print the shape of the first image and its label
 
+"""
+You normally do not shuffle the validation (or test) set.
 
-flowers_preprocessed_validation_ds = flowers_cnn.preprocess_images('flower_photos/validation', augment_data=False)
+Here’s the reasoning:
+
+Validation/Test sets are supposed to be a stable, fixed benchmark. If you shuffle them every time, you risk making debugging harder (metrics vary slightly run to run, even with the same model).
+
+Training set benefits from shuffling because it prevents the model from memorizing the order of examples and improves generalization.
+
+Frameworks like image_dataset_from_directory default to shuffle=True, but that option is mostly useful for training. For validation/test, you’d typically set shuffle=False to preserve order.
+"""
+flowers_preprocessed_validation_ds = flowers_cnn.preprocess_images(os.path.join(raw_data_dir, 'validation'), augment_data=False, shuffle=False)
 # for image_batch, labels_batch in flowers_preprocessed_train_ds.take(1):
 #     print(image_batch[0].shape, labels_batch[0])
 # flowers_model = flowers_cnn.build_model()
 
 
 if __name__ == "__main__":
-    trained_flowwers = flowers_cnn.train_model(flowers_preprocessed_train_ds, flowers_preprocessed_validation_ds, epochs=10)
+    trained_flowwers = flowers_cnn.train_model(flowers_preprocessed_train_ds, flowers_preprocessed_validation_ds, epochs=25, save_model=True)
     print("Model training complete.")
 # flowers_model.save('flowers_cnn_model.h5')
 # print("Model saved as 'flowers_cnn_model.h5'.")
