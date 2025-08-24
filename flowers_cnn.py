@@ -6,17 +6,14 @@ import numpy as np
 import platform
 from tensorflow.keras import layers, models
 
-
-# classes = ['daisy', 'dandelion', 'roses', 'sunflowers', 'tulips']
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress TensorFlow warnings
+# classes = ['daisy', 'dandelion', 'roses', 'sunflowers', 'tulips']
+
 class FlowersCNN:
     def __init__(self):
         pass
 
-    def prepare_data(self, raw_data_dir):
-        
-
-        
+    def prepare_data(self, raw_data_dir):        
         # 1 First turn the folder contents into a list of files:
         data = os.listdir(raw_data_dir)
         for data_folder in data:
