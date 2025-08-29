@@ -1,5 +1,6 @@
 import os
 
+from matplotlib import pyplot as plt
 import tensorflow as tf
 import random
 import numpy as np
@@ -76,7 +77,8 @@ class FlowersCNN:
             layers.RandomFlip("horizontal"),
             layers.RandomRotation(0.1),
             layers.RandomZoom(0.1),
-            layers.RandomContrast(0.1),
+            layers.RandomContrast(0.1)
+            
         ])
         def augment(image, label):
             image = data_augmentation(image)
@@ -95,10 +97,13 @@ class FlowersCNN:
             layers.MaxPooling2D((2, 2)),
             layers.Conv2D(32, (3, 3), activation='relu'),
             layers.MaxPooling2D((2, 2)),
-            
+            layers.Conv2D(64, (3, 3), activation='relu'),
+            layers.MaxPooling2D((2, 2)),
+            layers.Conv2D(128, (3, 3), activation='relu'),
+            layers.MaxPooling2D((2, 2)),
             layers.Dropout(0.2),  # Dropout layer to reduce overfitting
             layers.Flatten(),
-            # layers.Dense(512, activation='relu'),
+            layers.Dense(64, activation='relu'),
             layers.Dense(len(self.classes), activation='softmax')  # Output layer for multi-class classification
         ])
         model.compile(optimizer='adam',
@@ -107,12 +112,39 @@ class FlowersCNN:
         self.model = model
         return model
     
-    def train_model(self, train_ds, validation_ds, epochs=3, save_model=False):
+    def visualise_training(self, history_object, show=True):
+        """
+        Visualises accuracy and loss during training.
+        """
+        x_values = list(range(1, len(history_object.history['loss']) + 1))  # Get the number of epochs from the history object.
+        print(f"Number of epochs: {len(x_values)}", x_values)  # Print the number of epochs for debugging. Number of epochs: 3 [0, 1, 2]
+        plt.plot(x_values, history_object.history['loss'], label='Training Loss', color='red')
+        plt.plot(x_values, history_object.history['val_loss'], label='Validation Loss', color='orange')
+        plt.plot(x_values, history_object.history['accuracy'], label='Training Accuracy', color='blue')
+        plt.plot(x_values, history_object.history['val_accuracy'], label='Validation Accuracy', color='green')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.title('Training and Validation Loss/Accuracy')
+        if show:
+            plt.show()
+        else:
+            plt.savefig('training_history.png')
+        plt.clf()  # Clear the figure for future plots.
+
+    def train_model(self, train_ds, validation_ds, epochs=3, class_weights=None):
         history = self.build_model().fit(
             train_ds,
             validation_data=validation_ds,
-            epochs=epochs
+            epochs=epochs,
+            class_weight=class_weights
         )
+        plot_training = input("Do you want to plot the training history? (yes/no): ").lower() in ['yes', 'y'] # returns True if the user inputs 'yes' or 'y', otherwise False
+        
+        if plot_training:
+            show_plot = input("Do you want to see the plot? If not, it will simply be saved. (yes/no): ").lower() in ['yes', 'y'] # returns True if the user inputs 'show' or 's', otherwise False
+            self.visualise_training(history, show=show_plot)
+        save_model = input("Do you want to save the model? (yes/no): ").lower() in ['yes', 'y'] # returns True if the user inputs 'yes' or 'y', otherwise False
         if save_model:
             model_name = input("What name do you want to save the model as?: ")
             self.model.save(f'./saved_models/{model_name}.keras')
@@ -171,16 +203,10 @@ flowers_preprocessed_validation_ds = flowers_cnn.preprocess_images(os.path.join(
 
 
 if __name__ == "__main__":
-    trained_flowwers = flowers_cnn.train_model(flowers_preprocessed_train_ds, flowers_preprocessed_validation_ds, epochs=25, save_model=True)
+    trained_flowwers = flowers_cnn.train_model(flowers_preprocessed_train_ds, flowers_preprocessed_validation_ds, epochs=25)
     print("Model training complete.")
 # flowers_model.save('flowers_cnn_model.h5')
 # print("Model saved as 'flowers_cnn_model.h5'.")
 # You can now use this model to classify flower images.
 # To load the model, use: tf.keras.models.load_model('flowers_cnn_model.h5').
-'''
-| Prediction           | Accuracy  | Loss (lower is better)       |
-| -------------------- | --------- | ---------------------------- |
-| Cat: 0.99, Dog: 0.01 | ✅ Correct | Low loss (good confidence)   |
-| Cat: 0.51, Dog: 0.49 | ✅ Correct | Higher loss (low confidence) |
-| Cat: 0.40, Dog: 0.60 | ❌ Wrong   | Very high loss               |
-'''
+

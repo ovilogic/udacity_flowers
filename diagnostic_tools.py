@@ -10,7 +10,13 @@ import numpy as np
 
 from flowers_cnn import flowers_preprocessed_train_ds as trained_dataset, flowers_cnn, flowers_preprocessed_validation_ds as validation_dataset
 
-
+'''
+| Prediction           | Accuracy  | Loss (lower is better)       |
+| -------------------- | --------- | ---------------------------- |
+| Cat: 0.99, Dog: 0.01 | ✅ Correct | Low loss (good confidence)   |
+| Cat: 0.51, Dog: 0.49 | ✅ Correct | Higher loss (low confidence) |
+| Cat: 0.40, Dog: 0.60 | ❌ Wrong   | Very high loss               |
+'''
 # Assuming we want to visualise not the raw image but the pre-processed image. See what our pre-processing does.
 # We are also assuming that the pre-processing delivers a tf.data.Dataset object.
 def visualize_cnn_images(dataset, num_images=5):
@@ -49,9 +55,11 @@ def visualise_training(history_object):
     plt.legend()
     plt.title('Training and Validation Loss/Accuracy')
     plt.show()
+
+
 ######################################################################
 # Create a confusion matrix to see which classes are confused with each other.
-test_dataset = trained_dataset.take(1)  # Take a subset of the dataset for testing. The first batch is number 0.
+# test_dataset = trained_dataset.take(1)  # Take a subset of the dataset for testing. The first batch is number 0.
 
 #####################################################################
 # Confusion matrix
@@ -181,12 +189,13 @@ def confuse_flowers(dataset, model, show_plot=True):
 # print(f"Validation labels: {validation_labels}", len(validation_labels))  # Print the validation labels and their count. 
 
 if platform.system() == 'Windows':
+    print("Running on Windows")
     saved_dir = r'C:\python_work\tensorFlow\wsl_venv\Udacity\flowers\saved_models'
 else:
     saved_dir = '/mnt/c/python_work/tensorFlow/wsl_venv/Udacity/flowers/saved_models'
 
-loaded_model = tf.keras.models.load_model(os.path.join(saved_dir, 'flowers1.keras'))  # Load the trained model.
-flower_confusion = confuse_flowers(validation_dataset, loaded_model, show_plot=False)  # Call the function to create a confusion matrix for the validation dataset, where the problem is.
+loaded_model = tf.keras.models.load_model(os.path.join(saved_dir, 'loss77.keras'))  # Load the trained model.
+flower_confusion = confuse_flowers(validation_dataset, loaded_model, show_plot=True)  # Call the function to create a confusion matrix for the validation dataset, where the problem is.
 
 def create_class_weights(cm, class_names):
     """
@@ -206,14 +215,16 @@ def create_class_weights(cm, class_names):
     # Second, find the best performing class.
     best_class = max(cm_percentages, key=cm_percentages.get)
     best_value = cm_percentages[best_class]
+    counter = -1
+    class_weights = {}
     for k in cm_percentages.keys():
         if k != best_class:
-            cm_percentages[k] = float(f"{best_value / cm_percentages[k]:.2f}")
+            counter += 1
+            class_weights[counter] = float(f"{best_value / cm_percentages[k]:.2f}")
         else:
-            cm_percentages[k] = 1.0  # best class gets weight 1.0
-    print("Class weights:", cm_percentages)    
-    return cm_percentages
+            counter += 1
+            class_weights[counter] = 1.0  # best class gets weight 1.0
+    print("Class weights:", class_weights)    
+    return class_weights
         
-
-
-create_class_weights(flower_confusion, flowers_cnn.classes)
+class_weights = create_class_weights(flower_confusion, flowers_cnn.classes)
