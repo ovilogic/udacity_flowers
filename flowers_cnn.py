@@ -73,15 +73,42 @@ class FlowersCNN:
             return image, label
         train_ds = train_ds.map(normalize)
         # 2.2 You can also apply data augmentation to the images:
-        data_augmentation = tf.keras.Sequential([
+        data_augmentation_crop = tf.keras.Sequential([
+            # ex: Across 25 epochs, that single original image will be seen 25 times, but in 25 different augmented forms
             layers.RandomFlip("horizontal"),
-            layers.RandomRotation(0.1),
-            layers.RandomZoom(0.1),
-            layers.RandomContrast(0.1)
+            layers.RandomRotation(0.10),  # Randomly rotate the image by a factor of 0.10, that's up to 10% of 360 degrees, or 36 degrees.
+            layers.RandomContrast(0.1),
+            layers.RandomTranslation(0.1, 0.1), 
+            # RandomCrop + Resizing: Imagine cutting out a smaller rectangle from the photo, then enlarging it to fill the frame — the subject looks bigger, and fine details may blur slightly.
+            layers.RandomCrop(120, 120),  # Randomly crop the image to 120x120 pixels. Retains about 44% of the original image area.
+            layers.Resizing(180, 180),  # Resize back to the original size of 180x180 pixels.
+        ])
+        data_augmentation_translate = tf.keras.Sequential([
+            layers.RandomFlip("horizontal"),
+            layers.RandomRotation(0.10), # Randomly rotate the image by a factor of 0.10, that's up to 10% of 360 degrees, or 36 degrees.
+            
+            layers.RandomTranslation(0.2, 0.2),
+            layers.RandomZoom(0.2),
+            # Randomly translate the image by a factor of 0.1 (10%) both horizontally and vertically,
+            # small shifts (e.g., 0.1, 0.1) help the model handle off-center subjects.
+            # RandomTranslation: Imagine sliding a printed photo under a fixed‑size frame — you see a different part of the same photo, but the subject’s size doesn’t change.
+            layers.RandomContrast(0.2),
+        ])
+        data_augmentation_basic = tf.keras.Sequential([
+            # ex: Across 25 epochs, that single original image will be seen 25 times, but in 25 different augmented forms
+            layers.RandomFlip("horizontal"),
+            layers.RandomRotation(0.15),  # Randomly rotate the image by a factor of 0.15, that's up to 15% of 360 degrees, or 54 degrees.
+            layers.RandomZoom(0.2), # Randomly zoom in/out by a factor of 0.2 (20%)
+            layers.RandomContrast(0.2),
             
         ])
         def augment(image, label):
-            image = data_augmentation(image)
+            if tf.random.uniform(()) > 0.5:
+                image = data_augmentation_crop(image)
+            # elif tf.random.uniform(()) > 0.5 and tf.random.uniform(()) <= 0.9:
+            #     image = data_augmentation_translate(image)
+            else:
+                image = data_augmentation_translate(image)
             return image, label
         if augment_data == True:
             train_ds = train_ds.map(augment)
@@ -94,13 +121,19 @@ class FlowersCNN:
         model = models.Sequential([
             layers.Input(shape=(180, 180, 3)),  # Input layer for images of size 180x180 with 3 color channels
             layers.Conv2D(16, (3, 3), activation='relu'),
+            
             layers.MaxPooling2D((2, 2)),
             layers.Conv2D(32, (3, 3), activation='relu'),
+            
             layers.MaxPooling2D((2, 2)),
             layers.Conv2D(64, (3, 3), activation='relu'),
+            
             layers.MaxPooling2D((2, 2)),
             layers.Conv2D(128, (3, 3), activation='relu'),
             layers.MaxPooling2D((2, 2)),
+            # Rule of thumb: Dropout early in the network disrupts low-level feature learning (risky),
+            # dropout late in the network disrupts high-level memorization (usually good). 
+            # The smaller your dataset, the more you benefit from late dropout; the larger your dataset, the less you may need it at all.
             layers.Dropout(0.2),  # Dropout layer to reduce overfitting
             layers.Flatten(),
             layers.Dense(64, activation='relu'),
@@ -116,6 +149,7 @@ class FlowersCNN:
         """
         Visualises accuracy and loss during training.
         """
+        plt.figure(figsize=(8, 8))  # Start fresh figure
         x_values = list(range(1, len(history_object.history['loss']) + 1))  # Get the number of epochs from the history object.
         print(f"Number of epochs: {len(x_values)}", x_values)  # Print the number of epochs for debugging. Number of epochs: 3 [0, 1, 2]
         plt.plot(x_values, history_object.history['loss'], label='Training Loss', color='red')
@@ -129,14 +163,23 @@ class FlowersCNN:
         if show:
             plt.show()
         else:
-            plt.savefig('training_history.png')
-        plt.clf()  # Clear the figure for future plots.
+            plt.savefig('./stats/training_history.png')
+        plt.close()  # Clear the figure for future plots.
 
     def train_model(self, train_ds, validation_ds, epochs=3, class_weights=None):
+        checkpoint_cb = tf.keras.callbacks.ModelCheckpoint(
+            "best_flowers_model.keras",   # filename
+            save_best_only=True,          # only keep the best epoch
+            monitor="val_loss",           # which metric to watch
+            mode="min"                    # lower is better
+        )
+
         history = self.build_model().fit(
             train_ds,
             validation_data=validation_ds,
             epochs=epochs,
+            callbacks=[checkpoint_cb], # At the end of training, 
+            # the file on disk isn’t necessarily the weights from the final epoch — it’s the weights from the epoch where your chosen metric (in this case, lowest val_loss) was best.
             class_weight=class_weights
         )
         plot_training = input("Do you want to plot the training history? (yes/no): ").lower() in ['yes', 'y'] # returns True if the user inputs 'yes' or 'y', otherwise False
@@ -144,11 +187,11 @@ class FlowersCNN:
         if plot_training:
             show_plot = input("Do you want to see the plot? If not, it will simply be saved. (yes/no): ").lower() in ['yes', 'y'] # returns True if the user inputs 'show' or 's', otherwise False
             self.visualise_training(history, show=show_plot)
-        save_model = input("Do you want to save the model? (yes/no): ").lower() in ['yes', 'y'] # returns True if the user inputs 'yes' or 'y', otherwise False
-        if save_model:
-            model_name = input("What name do you want to save the model as?: ")
-            self.model.save(f'./saved_models/{model_name}.keras')
-            print(f"Model saved as '{model_name}.keras'.")
+        # save_model = input("Do you want to save the model? (yes/no): ").lower() in ['yes', 'y'] # returns True if the user inputs 'yes' or 'y', otherwise False
+        # if save_model:
+        #     model_name = input("What name do you want to save the model as?: ")
+        #     self.model.save(f'./saved_models/{model_name}.keras')
+        #     print(f"Model saved as '{model_name}.keras'.")
         return history
     
     def flowers_predict(self, model, image_path):
@@ -166,10 +209,13 @@ class FlowersCNN:
         predicted_class = np.argmax(predictions, axis=1) # Get the index of the class with the highest probability. 
         # Axis 1 means we are looking for the maximum value along the columns. The rows are the different images in the batch.
         # predicted_class is a 1D array with the index of the predicted class.
+        print(self.classes)  # Print the class names for debugging.
         predicted_class_name = self.classes[predicted_class[0]]  # Get the class name from the index
         confidence = np.max(predictions)  # Get the confidence of the prediction
-
-        return predicted_class_name, confidence # The data type of the returned object is a tuple containing the predicted class name and the confidence score.
+        confidence_perc = float(confidence) * 100  # Convert to percentage
+        confidence = f"{confidence_perc:.2f}%"  
+        print(f"Predicted class: {predicted_class_name} with confidence: {confidence}")   
+        return predicted_class_name, confidence_perc # The data type of the returned object is a tuple containing the predicted class name and the confidence score.
 
 
 if platform.system() == 'Windows':
@@ -179,31 +225,18 @@ else:
 
 flowers_cnn = FlowersCNN()
 flowers_prepare_data = flowers_cnn.prepare_data(raw_data_dir=raw_data_dir)  # This will create the train and validation folders in the flower_photos directory.
-flowers_preprocessed_train_ds = flowers_cnn.preprocess_images(os.path.join(raw_data_dir, 'train'), shuffle=True) # This will return a tf.data.Dataset object that contains the preprocessed images and their labels.
-
-# Reminder: you can use the .take(1) method to get a batch of images and labels from the dataset.
-# for image_batch, labels_batch in flowers_preprocessed_train_ds.take(1):
-#     print(image_batch[0].shape, labels_batch)  # Print the shape of the first image and its label
+flowers_preprocessed_train_ds = flowers_cnn.preprocess_images(os.path.join(raw_data_dir, 'train'), augment_data=True, shuffle=True) # This will return a tf.data.Dataset object that contains the preprocessed images and their labels.
 
 """
 You normally do not shuffle the validation (or test) set.
-
-Here’s the reasoning:
-
 Validation/Test sets are supposed to be a stable, fixed benchmark. If you shuffle them every time, you risk making debugging harder (metrics vary slightly run to run, even with the same model).
-
 Training set benefits from shuffling because it prevents the model from memorizing the order of examples and improves generalization.
-
 Frameworks like image_dataset_from_directory default to shuffle=True, but that option is mostly useful for training. For validation/test, you’d typically set shuffle=False to preserve order.
 """
 flowers_preprocessed_validation_ds = flowers_cnn.preprocess_images(os.path.join(raw_data_dir, 'validation'), augment_data=False, shuffle=False)
-# for image_batch, labels_batch in flowers_preprocessed_train_ds.take(1):
-#     print(image_batch[0].shape, labels_batch[0])
-# flowers_model = flowers_cnn.build_model()
-
 
 if __name__ == "__main__":
-    trained_flowwers = flowers_cnn.train_model(flowers_preprocessed_train_ds, flowers_preprocessed_validation_ds, epochs=25)
+    trained_flowwers = flowers_cnn.train_model(flowers_preprocessed_train_ds, flowers_preprocessed_validation_ds, epochs=60)
     print("Model training complete.")
 # flowers_model.save('flowers_cnn_model.h5')
 # print("Model saved as 'flowers_cnn_model.h5'.")

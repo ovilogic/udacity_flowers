@@ -65,17 +65,11 @@ def visualise_training(history_object):
 # Confusion matrix
 """
 What a confusion matrix does
-
 A confusion matrix is like a scoreboard that shows how your classifier’s predictions stack up against the truth, class by class:
-
 Each row = actual class.
-
 Each column = predicted class.
-
 The diagonal values = correctly classified samples.
-
 Off-diagonal values = misclassifications, telling you which classes your model is confusing with others.
-
 Example for a 3-class problem:
 
              Predicted
@@ -84,16 +78,11 @@ Actual A [ 8   1   0 ]
        B [ 2   5   1 ]
        C [ 0   2   9 ]
 
-
 This means:
-
 Class A: 8 correct, 1 misclassified as B.
-
 Class B: 5 correct, 2 misclassified as A, 1 as C.
-
 Class C: 9 correct, 2 misclassified as B.
-
-It’s a richer picture than accuracy because it shows where the model stumbles.
+It's a richer picture than accuracy because it shows where the model stumbles.
 """
 
 def confuse_flowers(dataset, model, show_plot=True):
@@ -174,10 +163,6 @@ def confuse_flowers(dataset, model, show_plot=True):
 
 # visualize_cnn_images(trained_dataset) # Call the function to visualize images from the dataset.
 # Train the model in windows, then visualise the training history.
-# hist_obj = flowers_cnn.train_model(trained_dataset, validation_dataset, epochs=50) # Train the model for 10 epochs.
-# print(len(hist_obj.history['loss']), len(hist_obj.history['accuracy']), len(hist_obj.history['val_loss']), len(hist_obj.history['val_accuracy']))
-
-
 # visualise_training(hist_obj) # Call the function to visualize training history.
 
 # validation_labels = []
@@ -194,16 +179,14 @@ if platform.system() == 'Windows':
 else:
     saved_dir = '/mnt/c/python_work/tensorFlow/wsl_venv/Udacity/flowers/saved_models'
 
-loaded_model = tf.keras.models.load_model(os.path.join(saved_dir, 'loss77.keras'))  # Load the trained model.
+loaded_model = tf.keras.models.load_model(os.path.join(saved_dir, 'loss50_a82.keras'))  # Load the trained model.
 flower_confusion = confuse_flowers(validation_dataset, loaded_model, show_plot=True)  # Call the function to create a confusion matrix for the validation dataset, where the problem is.
 
 def create_class_weights(cm, class_names):
     """
     Calculate class weights from the confusion matrix.
-    
     Args:
         cm: Confusion matrix as a 2D NumPy array.
-        
     Returns:
         A dictionary mapping class indices to their corresponding weights.
     """
@@ -228,3 +211,5 @@ def create_class_weights(cm, class_names):
     return class_weights
         
 class_weights = create_class_weights(flower_confusion, flowers_cnn.classes)
+
+
