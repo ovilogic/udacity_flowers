@@ -2,3 +2,4 @@ flower_photos/
 flower_photos.tgz
 __pycache__/
 saved_models/
+predict/

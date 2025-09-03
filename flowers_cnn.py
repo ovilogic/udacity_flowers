@@ -129,7 +129,7 @@ class FlowersCNN:
             layers.Conv2D(64, (3, 3), activation='relu'),
             
             layers.MaxPooling2D((2, 2)),
-            layers.Conv2D(128, (3, 3), activation='relu'),
+            layers.Conv2D(128, (3, 3), activation='relu', name='conv_128'),
             layers.MaxPooling2D((2, 2)),
             # Rule of thumb: Dropout early in the network disrupts low-level feature learning (risky),
             # dropout late in the network disrupts high-level memorization (usually good). 
@@ -204,12 +204,13 @@ class FlowersCNN:
         image = image / 255.0  # Normalize the image to [0, 1]
         image = np.expand_dims(image, axis=0)  # Add batch dimension
         # Make prediction
-        predictions = loaded_model.predict(image) # Produces an array of probabilities for each class. 
+        predictions = loaded_model.predict(image) # Produces an array of probabilities for each class.
+        print(f"Raw model predictions: {predictions}") 
         # The array has 2 dimensions: the first dimension is the batch size (1 in this case), and the second dimension is the number of classes. The output is a 2D array with shape (1, num_classes).
         predicted_class = np.argmax(predictions, axis=1) # Get the index of the class with the highest probability. 
         # Axis 1 means we are looking for the maximum value along the columns. The rows are the different images in the batch.
         # predicted_class is a 1D array with the index of the predicted class.
-        print(self.classes)  # Print the class names for debugging.
+        print(f"class indices: {self.classes}")  # Print the class indices for debugging.
         predicted_class_name = self.classes[predicted_class[0]]  # Get the class name from the index
         confidence = np.max(predictions)  # Get the confidence of the prediction
         confidence_perc = float(confidence) * 100  # Convert to percentage

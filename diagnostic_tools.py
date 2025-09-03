@@ -10,13 +10,7 @@ import numpy as np
 
 from flowers_cnn import flowers_preprocessed_train_ds as trained_dataset, flowers_cnn, flowers_preprocessed_validation_ds as validation_dataset
 
-'''
-| Prediction           | Accuracy  | Loss (lower is better)       |
-| -------------------- | --------- | ---------------------------- |
-| Cat: 0.99, Dog: 0.01 | ✅ Correct | Low loss (good confidence)   |
-| Cat: 0.51, Dog: 0.49 | ✅ Correct | Higher loss (low confidence) |
-| Cat: 0.40, Dog: 0.60 | ❌ Wrong   | Very high loss               |
-'''
+
 # Assuming we want to visualise not the raw image but the pre-processed image. See what our pre-processing does.
 # We are also assuming that the pre-processing delivers a tf.data.Dataset object.
 def visualize_cnn_images(dataset, num_images=5):
@@ -56,39 +50,11 @@ def visualise_training(history_object):
     plt.title('Training and Validation Loss/Accuracy')
     plt.show()
 
-
-######################################################################
-# Create a confusion matrix to see which classes are confused with each other.
-# test_dataset = trained_dataset.take(1)  # Take a subset of the dataset for testing. The first batch is number 0.
-
 #####################################################################
 # Confusion matrix
-"""
-What a confusion matrix does
-A confusion matrix is like a scoreboard that shows how your classifier’s predictions stack up against the truth, class by class:
-Each row = actual class.
-Each column = predicted class.
-The diagonal values = correctly classified samples.
-Off-diagonal values = misclassifications, telling you which classes your model is confusing with others.
-Example for a 3-class problem:
-
-             Predicted
-           A   B   C
-Actual A [ 8   1   0 ]
-       B [ 2   5   1 ]
-       C [ 0   2   9 ]
-
-This means:
-Class A: 8 correct, 1 misclassified as B.
-Class B: 5 correct, 2 misclassified as A, 1 as C.
-Class C: 9 correct, 2 misclassified as B.
-It's a richer picture than accuracy because it shows where the model stumbles.
-"""
 
 def confuse_flowers(dataset, model, show_plot=True):
     """
-    Creates a confusion matrix for the dataset using the trained model.
-    
     Args:
         dataset: A tf.data.Dataset object containing images and labels.
         model: A trained Keras model.
@@ -153,25 +119,13 @@ def confuse_flowers(dataset, model, show_plot=True):
         plt.xlabel('Predicted label')
         plt.show()
     """
-    If you give it a 2D array (like your confusion matrix cm of shape [n_classes, n_classes]), it maps the numbers → colors and draws a rectangular grid. That’s exactly what you want.
-
-    If you give it a 3D array, it interprets it as an RGB (or RGBA) image, e.g. shape (height, width, 3) for RGB or (height, width, 4) for RGBA. That’s how you can pass an actual color image into imshow.
-
+    If you give it a 2D array (like your confusion matrix cm of shape [n_classes, n_classes]), 
+    it maps the numbers → colors and draws a rectangular grid. That’s exactly what you want.
+    If you give it a 3D array, it interprets it as an RGB (or RGBA) image, e.g. shape (height, width, 3) 
+    for RGB or (height, width, 4) for RGBA. That’s how you can pass an actual color image into imshow.
     If you give it a 1D array, it won’t work directly — you’d need to reshape it into 2D first.
     """
     return cm
-
-# visualize_cnn_images(trained_dataset) # Call the function to visualize images from the dataset.
-# Train the model in windows, then visualise the training history.
-# visualise_training(hist_obj) # Call the function to visualize training history.
-
-# validation_labels = []
-# for images, labels in validation_dataset.take(1):  # Take one batch from the validation dataset.
-    
-#     validation_labels.extend(labels.numpy().tolist())  # Convert labels to integers for confusion matrix.
-#     print(images.shape, images[0].shape, images[0])
-
-# print(f"Validation labels: {validation_labels}", len(validation_labels))  # Print the validation labels and their count. 
 
 if platform.system() == 'Windows':
     print("Running on Windows")
@@ -179,8 +133,8 @@ if platform.system() == 'Windows':
 else:
     saved_dir = '/mnt/c/python_work/tensorFlow/wsl_venv/Udacity/flowers/saved_models'
 
-loaded_model = tf.keras.models.load_model(os.path.join(saved_dir, 'loss50_a82.keras'))  # Load the trained model.
-flower_confusion = confuse_flowers(validation_dataset, loaded_model, show_plot=True)  # Call the function to create a confusion matrix for the validation dataset, where the problem is.
+loaded_model = tf.keras.models.load_model(os.path.join(saved_dir, 'loss56_a80_fix.keras'))  # Load the trained model.
+# flower_confusion = confuse_flowers(validation_dataset, loaded_model, show_plot=False)  # Call the function to create a confusion matrix for the validation dataset, where the problem is.
 
 def create_class_weights(cm, class_names):
     """
@@ -207,9 +161,11 @@ def create_class_weights(cm, class_names):
         else:
             counter += 1
             class_weights[counter] = 1.0  # best class gets weight 1.0
-    print("Class weights:", class_weights)    
+    # print("Class weights:", class_weights)    
     return class_weights
         
-class_weights = create_class_weights(flower_confusion, flowers_cnn.classes)
+# class_weights = create_class_weights(flower_confusion, flowers_cnn.classes)
+# class_weights[4] = 1.6
+# print("Adjusted class weights:", class_weights, flowers_cnn.classes, sep='\n')
 
 

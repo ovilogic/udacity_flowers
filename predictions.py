@@ -11,6 +11,6 @@ if platform.system() == 'Windows':
 else:
     saved_dir = '/mnt/c/python_work/tensorFlow/wsl_venv/Udacity/flowers/saved_models'
 
-model_path = os.path.join(saved_dir, 'loss50_a82.keras')
-prediction = flowers_cnn.flowers_predict(model_path, './predict/daisy.jpg')
+model_path = os.path.join(saved_dir, 'loss56_a80_fix.keras')
+prediction = flowers_cnn.flowers_predict(model_path, './predict/rose_t.jpg')
 print(prediction)
